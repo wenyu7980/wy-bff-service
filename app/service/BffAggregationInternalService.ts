@@ -7,16 +7,16 @@ export default class BffAggregationInternalService extends Service {
     const { mysql } = this.ctx.app;
     const conn = await mysql.beginTransaction();
     try {
-      await mysql.delete('bff_aggregation_requirement', {
+      await conn.delete('bff_aggregation_requirement', {
         service_name: aggregation.serviceName,
       });
-      await mysql.delete('bff_aggregation_provider', {
+      await conn.delete('bff_aggregation_provider', {
         service_name: aggregation.serviceName,
       });
       // requirement
       for (const requirement of aggregation.requirements) {
         for (const attribute of requirement.attributes) {
-          await mysql.insert<AggregationRequirementEntity>('bff_aggregation_requirement', {
+          await conn.insert<AggregationRequirementEntity>('bff_aggregation_requirement', {
             service_name: aggregation.serviceName,
             class_name: attribute.className,
             method: requirement.method,
@@ -29,7 +29,7 @@ export default class BffAggregationInternalService extends Service {
       }
       // provider
       for (const provider of aggregation.providers) {
-        await mysql.insert<AggregationProviderEntity>('bff_aggregation_provider', {
+        await conn.insert<AggregationProviderEntity>('bff_aggregation_provider', {
           service_name: aggregation.serviceName,
           path: provider.path,
           method: provider.method,
