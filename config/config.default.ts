@@ -9,6 +9,12 @@ export default (appInfo: EggAppInfo) => {
 
   // add your egg config in here
   config.middleware = [];
+  // 关闭csrf
+  config.security = {
+    csrf: {
+      enable: false,
+    },
+  };
   config.mysql = {
     client: {
       host: '${database.host}',

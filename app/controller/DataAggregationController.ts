@@ -1,4 +1,4 @@
-import { Controller, Mysql } from 'egg';
+import { Controller } from 'egg';
 
 export default class DataAggregationController extends Controller {
 
@@ -9,10 +9,5 @@ export default class DataAggregationController extends Controller {
       .join('/'), queries, headers);
     this.ctx.body = result.body;
     this.ctx.status = result.status;
-  }
-
-  public async testMysql() {
-    const mysql: Mysql = this.app.mysql;
-    this.ctx.body = await mysql.get('users');
   }
 }

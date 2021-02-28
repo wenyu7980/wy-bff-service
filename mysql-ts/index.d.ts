@@ -93,7 +93,7 @@ declare module 'egg' {
      * @returns {Promise<MysqlExecuteResult>} mysql 执行结果
      * @description
      */
-    insert(tableName: string, data: any): Promise<MysqlExecuteResult>;
+    insert<T>(tableName: string, data: T): Promise<MysqlExecuteResult>;
 
     /**
      * 更新数据
