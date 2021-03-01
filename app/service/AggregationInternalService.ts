@@ -1,8 +1,8 @@
 import { Service } from 'egg';
-import { AggregationInit } from '../domain/AggregationDefine';
+import { AggregationInit, AggregationItem } from '../domain/AggregationDefine';
 import { AggregationProviderEntity, AggregationRequirementEntity } from '../entity/AggregationEntity';
 
-export default class BffAggregationInternalService extends Service {
+export default class AggregationInternalService extends Service {
   public async initAggregation(aggregation: AggregationInit) {
     const { mysql } = this.ctx.app;
     const conn = await mysql.beginTransaction();
@@ -32,7 +32,6 @@ export default class BffAggregationInternalService extends Service {
         await conn.insert<AggregationProviderEntity>('bff_aggregation_provider', {
           service_name: aggregation.serviceName,
           path: provider.path,
-          method: provider.method,
           class_name: provider.className,
           array_flag: provider.arrayFlag ? 1 : 0,
           params: JSON.stringify(provider.params),
@@ -43,5 +42,13 @@ export default class BffAggregationInternalService extends Service {
       await conn.rollback();
       throw e;
     }
+  }
+
+  public async getAggregationItem(): Promise<AggregationItem[]> {
+    const { mysql } = this.ctx.app;
+    return (await mysql.query('SELECT distinct service_name,method,path from bff_aggregation_requirement')
+    ).map(d => {
+      return { serviceName: d.service_name, path: d.path, method: d.method };
+    });
   }
 }

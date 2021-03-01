@@ -79,7 +79,7 @@ declare module 'egg' {
     query(
       sql: String,
       values?: Array<any>,
-    ): Promise<Array<any> | MysqlExecuteResult>;
+    ): Promise<Array<any>>;
 
     /* 增删改部分 */
 

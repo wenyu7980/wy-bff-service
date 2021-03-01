@@ -12,7 +12,6 @@ export interface AggregationProviderEntity {
   class_name: string;
   array_flag: number;
   service_name: string;
-  method: string;
   path: string;
   params: string;
 }

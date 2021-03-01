@@ -5,7 +5,6 @@ export interface AggregationInit {
 }
 
 export interface AggregationProvider {
-  readonly method: string;
   readonly path: string;
   readonly className: string;
   readonly arrayFlag: boolean;
@@ -31,4 +30,17 @@ export interface AggregationRequirementAttribute {
     readonly value: string;
     readonly constant: boolean
   }[]
+}
+
+
+export interface AggregationItem {
+  serviceName: string;
+  method: string;
+  path: string;
+}
+
+export interface HeaderRequest {
+  serviceName: string;
+  method: string;
+  path: string;
 }

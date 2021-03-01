@@ -2,12 +2,12 @@
 // Do not modify this file!!!!!!!!!
 
 import 'egg';
-import ExportBffAggregationInternalController from '../../../app/controller/BffAggregationInternalController';
-import ExportDataAggregationController from '../../../app/controller/DataAggregationController';
+import ExportAggregationController from '../../../app/controller/AggregationController';
+import ExportAggregationInternalController from '../../../app/controller/AggregationInternalController';
 
 declare module 'egg' {
   interface IController {
-    bffAggregationInternalController: ExportBffAggregationInternalController;
-    dataAggregationController: ExportDataAggregationController;
+    aggregationController: ExportAggregationController;
+    aggregationInternalController: ExportAggregationInternalController;
   }
 }
