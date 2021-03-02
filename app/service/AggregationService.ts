@@ -25,7 +25,7 @@ export default class AggregationService extends Service {
     const url = await this.getServiceUrl(header.serviceName);
     const result = await this.ctx.curl(`${url}/${getPath(request.path)}`, {
       headers: request.headers,
-      data: request.queries,
+      data: request.body,
       method: 'POST',
     });
     return {
@@ -49,10 +49,17 @@ export default class AggregationService extends Service {
     const result = { ...data };
     for (const attribute of attributes) {
       if (attribute.request) {
+        const url = await this.getServiceUrl(attribute.request.serviceName);
         if (attribute.request.arrayFlag) {
-          result[attribute.name] = [];
-        } else {
-          result[attribute.name] = {};
+          const result = await this.ctx.curl(`${url}/${getAggregatePath(attribute.request.params, data, attribute.request.path)}`, {
+            data: getAggregateQueries(attribute.request.params, data),
+          });
+          result[attribute.name] = result.data;
+        } else if (data[attribute.name]) {
+          const result = await this.ctx.curl(`${url}/${getAggregatePath(attribute.request.params, data[attribute.name], attribute.request.path)}`, {
+            data: getAggregateQueries(attribute.request.params, data[attribute.name]),
+          });
+          result[attribute.name] = result.data;
         }
       } else if (data[attribute.name]) {
         if (data[attribute.name] instanceof Array) {
@@ -98,6 +105,25 @@ export default class AggregationService extends Service {
     }
     return attributes;
   }
+}
+
+function getAggregatePath(params: { name: string; value: string; pathFlag: boolean; constant: boolean }[], data: any, path: string): string {
+  for (const param of params) {
+    if (param.pathFlag) {
+      path = path.replace(`{${param.name}}`, param.constant ? param.value : data[param.value]);
+    }
+  }
+  return path;
+}
+
+function getAggregateQueries(params: { name: string; value: string; pathFlag: boolean; constant: boolean }[], data: any): any {
+  const ret = {};
+  for (const param of params) {
+    if (!param.pathFlag) {
+      ret[param.name] = param.constant ? param.value : data[param.value];
+    }
+  }
+  return ret;
 }
 
 
