@@ -86,8 +86,8 @@ export default class AggregationService extends Service {
       provider.class_name as className,
       provider.array_flag as arrayFlag,
       requirement.params as requirementParams
-    FROM bff_aggregation_requirement requirement
-    JOIN bff_aggregation_provider provider
+    FROM aggregation_requirement requirement
+    JOIN aggregation_provider provider
     ON requirement.array_flag = provider.array_flag AND requirement.class_name = provider.class_name
     WHERE
       requirement.service_name = ? AND requirement.method = ? AND requirement.path = ?;

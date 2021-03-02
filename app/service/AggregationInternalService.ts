@@ -7,16 +7,16 @@ export default class AggregationInternalService extends Service {
     const { mysql } = this.ctx.app;
     const conn = await mysql.beginTransaction();
     try {
-      await conn.delete('bff_aggregation_requirement', {
+      await conn.delete('aggregation_requirement', {
         service_name: aggregation.serviceName,
       });
-      await conn.delete('bff_aggregation_provider', {
+      await conn.delete('aggregation_provider', {
         service_name: aggregation.serviceName,
       });
       // requirement
       for (const requirement of aggregation.requirements) {
         for (const attribute of requirement.attributes) {
-          await conn.insert<AggregationRequirementEntity>('bff_aggregation_requirement', {
+          await conn.insert<AggregationRequirementEntity>('aggregation_requirement', {
             service_name: aggregation.serviceName,
             class_name: attribute.className,
             method: requirement.method,
@@ -29,7 +29,7 @@ export default class AggregationInternalService extends Service {
       }
       // provider
       for (const provider of aggregation.providers) {
-        await conn.insert<AggregationProviderEntity>('bff_aggregation_provider', {
+        await conn.insert<AggregationProviderEntity>('aggregation_provider', {
           service_name: aggregation.serviceName,
           path: provider.path,
           class_name: provider.className,
@@ -46,7 +46,7 @@ export default class AggregationInternalService extends Service {
 
   public async getAggregationItem(): Promise<AggregationItem[]> {
     const { mysql } = this.ctx.app;
-    return (await mysql.query('SELECT distinct service_name,method,path from bff_aggregation_requirement')
+    return (await mysql.query('SELECT distinct service_name,method,path from aggregation_requirement')
     ).map(d => {
       return { serviceName: d.service_name, path: d.path, method: d.method };
     });

@@ -17,14 +17,14 @@ export default () => {
       clientOptions: {},
       configList: {
         baseConfig: {
-          dataId: 'wy-bff',
+          dataId: 'wy-aggregation',
           groupName: 'DEFAULT_GROUP',
         },
       },
     },
     providers: {
-      bffService: {
-        serviceName: 'wy-bff',
+      AggregationService: {
+        serviceName: 'wy-aggregation',
         instance: {
           ip: '127.0.0.1',
           port: 8100,
