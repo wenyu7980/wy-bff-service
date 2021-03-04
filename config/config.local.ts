@@ -27,7 +27,7 @@ export default () => {
       AggregationService: {
         serviceName: 'wy-aggregation',
         instance: {
-          ip: '192.168.3.201',
+          ip: 'localhost',
           port: 8100,
         },
         groupName: 'DEFAULT_GROUP',

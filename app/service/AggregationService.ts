@@ -11,9 +11,10 @@ export default class AggregationService extends Service {
     const result = await this.ctx.curl(`${url}/${getPath(request.path)}`, {
       headers: request.headers,
       data: request.queries,
+      method: 'POST',
     });
     return {
-      body: this.aggregate(await this.getAggregation(header.serviceName, header.method, header.path), JSON.parse(result.data)),
+      body: await this.aggregate(await this.getAggregation(header.serviceName, header.method, header.path), JSON.parse(result.data)),
       status: result.status,
       headers: result.headers,
     };
@@ -26,10 +27,9 @@ export default class AggregationService extends Service {
     const result = await this.ctx.curl(`${url}/${getPath(request.path)}`, {
       headers: request.headers,
       data: request.body,
-      method: 'POST',
     });
     return {
-      body: this.aggregate(await this.getAggregation(header.serviceName, header.method, header.path), JSON.parse(result.data)),
+      body: await this.aggregate(await this.getAggregation(header.serviceName, header.method, header.path), JSON.parse(result.data)),
       status: result.status,
       headers: result.headers,
     };
@@ -46,6 +46,13 @@ export default class AggregationService extends Service {
   }
 
   private async aggregate(attributes: AggregationAttribute[], data: any): Promise<any> {
+    if (data instanceof Array) {
+      const result = [ ...data ];
+      for (const [ i, d ] of data.entries()) {
+        result[i] = this.aggregate(attributes, d);
+      }
+      return result;
+    }
     const result = { ...data };
     for (const attribute of attributes) {
       if (attribute.request) {
@@ -80,7 +87,6 @@ export default class AggregationService extends Service {
     SELECT
       requirement.attribute as attribute,
       provider.service_name as serviceName,
-      provider.method as method,
       provider.path as path,
       provider.params as providerParams,
       provider.class_name as className,
@@ -128,7 +134,7 @@ function getAggregateQueries(params: { name: string; value: string; pathFlag: bo
 
 
 function getPath(path: string): string {
-  return path.split('/').slice(2).join('/');
+  return path.split('/').slice(3).join('/');
 }
 
 function addAttributes(names: string[], aggregation: AggregationResult, attributes: AggregationAttribute[]) {
