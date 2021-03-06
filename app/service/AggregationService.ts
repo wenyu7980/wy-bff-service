@@ -13,8 +13,13 @@ export default class AggregationService extends Service {
       data: request.queries,
       method: 'POST',
     });
+    const data = JSON.parse(result.data);
+    await Promise.all(
+      generateAggregations(await this.getAggregation(header.serviceName, header.method, header.path), data)
+        .map(a => this.aggregates(a)),
+    );
     return {
-      body: await this.aggregate(await this.getAggregation(header.serviceName, header.method, header.path), JSON.parse(result.data)),
+      body: data,
       status: result.status,
       headers: result.headers,
     };
@@ -28,11 +33,28 @@ export default class AggregationService extends Service {
       headers: request.headers,
       data: request.body,
     });
+    const data = JSON.parse(result.data);
+    await Promise.all(
+      generateAggregations(await this.getAggregation(header.serviceName, header.method, header.path), data)
+        .map(a => this.aggregates(a)),
+    );
     return {
-      body: await this.aggregate(await this.getAggregation(header.serviceName, header.method, header.path), JSON.parse(result.data)),
+      body: data,
       status: result.status,
       headers: result.headers,
     };
+  }
+
+  private async aggregates(aggregation: AggregationAttributes) {
+    const url = await this.getServiceUrl(aggregation.serviceName);
+    const result = await this.ctx.curl(`${url}/${getAggregatePath(aggregation.params, aggregation.path)}`, {
+      data: getAggregateQueries(aggregation.params),
+    });
+    if (result.status < 300) {
+      for (const attribute of aggregation.attributes) {
+        attribute.parent[attribute.name] = JSON.parse(result.data);
+      }
+    }
   }
 
   private async getServiceUrl(serviceName: string) {
@@ -45,45 +67,9 @@ export default class AggregationService extends Service {
     return AggregationService.serviceMap.get(serviceName);
   }
 
-  private async aggregate(attributes: AggregationAttribute[], data: any): Promise<any> {
-    if (data instanceof Array) {
-      const result = [ ...data ];
-      for (const [ i, d ] of data.entries()) {
-        result[i] = this.aggregate(attributes, d);
-      }
-      return result;
-    }
-    const result = { ...data };
-    for (const attribute of attributes) {
-      if (attribute.request) {
-        const url = await this.getServiceUrl(attribute.request.serviceName);
-        if (attribute.request.arrayFlag) {
-          const result = await this.ctx.curl(`${url}/${getAggregatePath(attribute.request.params, data, attribute.request.path)}`, {
-            data: getAggregateQueries(attribute.request.params, data),
-          });
-          result[attribute.name] = result.data;
-        } else if (data[attribute.name]) {
-          const result = await this.ctx.curl(`${url}/${getAggregatePath(attribute.request.params, data[attribute.name], attribute.request.path)}`, {
-            data: getAggregateQueries(attribute.request.params, data[attribute.name]),
-          });
-          result[attribute.name] = result.data;
-        }
-      } else if (data[attribute.name]) {
-        if (data[attribute.name] instanceof Array) {
-          for (const [ index, d ] of data[attribute.name].entries) {
-            result[attribute.name][index] = await this.aggregate(attribute.attributes, d);
-          }
-        } else {
-          result[attribute.name] = await this.aggregate(attribute.attributes, data[attribute.name]);
-        }
-      }
-    }
-    return result;
-  }
-
-  private async getAggregation(serviceName: string, method: string, path: string): Promise<AggregationAttribute[]> {
+  private async getAggregation(serviceName: string, method: string, path: string): Promise<AggregationResult[]> {
     const { mysql } = this.ctx.app;
-    const result: AggregationResult[] = (await mysql.query(`
+    return (await mysql.query(`
     SELECT
       requirement.attribute as attribute,
       provider.service_name as serviceName,
@@ -105,28 +91,23 @@ export default class AggregationService extends Service {
         requirementParams: JSON.parse(d.requirementParams),
       };
     });
-    const attributes: AggregationAttribute[] = [];
-    for (const r of result) {
-      addAttributes(r.attribute.split('.'), r, attributes);
-    }
-    return attributes;
   }
 }
 
-function getAggregatePath(params: { name: string; value: string; pathFlag: boolean; constant: boolean }[], data: any, path: string): string {
+function getAggregatePath(params: { name: string; value: string; pathFlag: boolean; }[], path: string): string {
   for (const param of params) {
     if (param.pathFlag) {
-      path = path.replace(`{${param.name}}`, param.constant ? param.value : data[param.value]);
+      path = path.replace(`{${param.name}}`, param.value);
     }
   }
   return path;
 }
 
-function getAggregateQueries(params: { name: string; value: string; pathFlag: boolean; constant: boolean }[], data: any): any {
+function getAggregateQueries(params: { name: string; value: string; pathFlag: boolean; }[]): any {
   const ret = {};
   for (const param of params) {
     if (!param.pathFlag) {
-      ret[param.name] = param.constant ? param.value : data[param.value];
+      ret[param.name] = param.value;
     }
   }
   return ret;
@@ -134,65 +115,119 @@ function getAggregateQueries(params: { name: string; value: string; pathFlag: bo
 
 
 function getPath(path: string): string {
-  return path.split('/').slice(3).join('/');
+  return path.split('/')
+    .slice(2)
+    .join('/');
 }
 
-function addAttributes(names: string[], aggregation: AggregationResult, attributes: AggregationAttribute[]) {
-  if (names.length === 1) {
-    attributes.push(
-      {
-        name: names[0],
-        attributes: [],
-        request: {
-          className: aggregation.className,
-          arrayFlag: aggregation.arrayFlag,
-          serviceName: aggregation.serviceName,
-          path: aggregation.path,
-          params: aggregation.arrayFlag ?
-            aggregation.requirementParams.map(p => {
-              let pathFlag = false;
-              for (const param of aggregation.providerParams) {
-                if (param.name === p.name) {
-                  pathFlag = param.pathFlag;
-                  break;
-                }
-              }
-              return { ...p, pathFlag };
-            }) :
-            aggregation.providerParams.map(p => {
-              return { ...p, constant: false, value: p.name };
-            }),
-        },
-      },
-    );
+function generateAggregations(aggregations: AggregationResult[], data: any): AggregationAttributes[] {
+  const ret: AggregationAttributes[] = [];
+  for (const aggregation of aggregations) {
+    const params = getParam(aggregation.attribute.split('.'), aggregation, data);
+    labelParam: for (const param of params) {
+      for (const attribute of ret) {
+        if (attribute.className === aggregation.className
+          && attribute.arrayFlag === aggregation.arrayFlag
+          && diffParamArray(param.params, attribute.params)) {
+          attribute.attributes.push({ parent: param.parent, name: param.name });
+          continue labelParam;
+        }
+      }
+      ret.push({
+        className: aggregation.className,
+        arrayFlag: aggregation.arrayFlag,
+        serviceName: aggregation.serviceName,
+        path: aggregation.path,
+        attributes: [
+          { parent: param.parent, name: param.name },
+        ],
+        params: param.params,
+      });
+    }
+  }
+  return ret;
+}
+
+
+function getParam(attributes: string[], aggregation: AggregationResult, data: any)
+  : { params: AggregationAttributeParam[], parent: any, name: any }[] {
+  if (attributes.length === 0) return [];
+  const ret: { params: AggregationAttributeParam[], parent: any, name: any }[] = [];
+  if (data instanceof Array) {
+    for (const d of data) {
+      ret.push(...getParam(attributes, aggregation, d));
+    }
+  }
+  const attr = attributes[0];
+  if (attributes.length === 1) {
+    if (aggregation.arrayFlag) {
+      ret.push({
+        params: aggregation.requirementParams.map(p => {
+          let pathFlag = false;
+          for (const param of aggregation.providerParams) {
+            if (param.name === p.name) {
+              pathFlag = param.pathFlag;
+              break;
+            }
+          }
+          return { name: p.name, value: p.constant ? p.value : data[p.value], pathFlag };
+        }),
+        parent: data,
+        name: attr,
+      });
+      return ret;
+    } else if (data[attr]) {
+      ret.push({
+        params: aggregation.providerParams.map(p => {
+          return { name: p.name, pathFlag: p.pathFlag, value: data[attr][p.name] };
+        }),
+        parent: data,
+        name: attr,
+      });
+    }
+    return ret;
+  }
+  if (!data[attr]) {
+    return ret;
+  }
+  if (data[attr] instanceof Array) {
+    for (const d of data[attr]) {
+      ret.push(...getParam(attributes.slice(1), aggregation, d));
+    }
   } else {
-    for (const attribute of attributes) {
-      if (attribute.name === names[0]) {
-        addAttributes(names.slice(1), aggregation, attribute.attributes);
-        return;
+    ret.push(...getParam(attributes.slice(1), aggregation, data[attr]));
+  }
+  return ret;
+}
+
+function diffParamArray(o1: AggregationAttributeParam[], o2: AggregationAttributeParam[]): boolean {
+  if (o1.length !== o2.length) {
+    return false;
+  }
+  outer: for (const l of o1) {
+    for (const r of o2) {
+      if (l.name === r.name && l.value === r.value && l.pathFlag === r.pathFlag) {
+        continue outer;
       }
     }
-    const attr = { name: names[0], attributes: [] };
-    attributes.push(attr);
-    addAttributes(names.slice(1), aggregation, attr.attributes);
+    return false;
   }
+  return true;
 }
 
-interface AggregationAttribute {
-  name: string;
-  attributes: AggregationAttribute[];
-  request?: {
-    className: string;
-    arrayFlag: boolean;
-    serviceName: string;
-    path: string;
-    params: {
-      name: string;
-      value: string;
-      pathFlag: boolean;
-      constant: boolean
-    }[];
-  }
+interface AggregationAttributes {
+  readonly className: string;
+  readonly arrayFlag: boolean;
+  readonly params: AggregationAttributeParam[];
+  readonly serviceName: string;
+  readonly path: string;
+  readonly attributes: { parent: any, name: any }[];
+}
+
+interface AggregationAttributeParam {
+  readonly name: string;
+  readonly value: string;
+  readonly pathFlag: boolean;
 }
 
 interface AggregationResult {
@@ -212,3 +247,4 @@ interface AggregationResult {
     readonly constant: boolean
   }[],
 }
+
