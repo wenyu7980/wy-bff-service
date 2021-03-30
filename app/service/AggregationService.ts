@@ -2,12 +2,11 @@ import { Service } from 'egg';
 import { HeaderRequest } from '../domain/AggregationDefine';
 
 export default class AggregationService extends Service {
-  private static serviceMap: Map<string, string> = new Map<string, string>();
 
   async postAggregate(): Promise<{ body: any, status: number, headers: any }> {
     const { request } = this.ctx;
     const header: HeaderRequest = JSON.parse(request.headers.context).request;
-    const url = await this.getServiceUrl(header.serviceName);
+    const url = this.app.context.nacosServices.get(header.serviceName);
     const result = await this.ctx.curl(`${url}/${getPath(request.path)}`, {
       headers: request.headers,
       data: request.queries,
@@ -28,7 +27,7 @@ export default class AggregationService extends Service {
   async getAggregate(): Promise<{ body: any, status: number, headers: any }> {
     const { request } = this.ctx;
     const header: HeaderRequest = JSON.parse(request.headers.context).request;
-    const url = await this.getServiceUrl(header.serviceName);
+    const url = this.app.context.nacosServices.get(header.serviceName);
     const result = await this.ctx.curl(`${url}/${getPath(request.path)}`, {
       headers: request.headers,
       data: request.body,
@@ -46,7 +45,10 @@ export default class AggregationService extends Service {
   }
 
   private async aggregates(aggregation: AggregationAttributes) {
-    const url = await this.getServiceUrl(aggregation.serviceName);
+    if (!this.app.context.nacosServices.has(aggregation.serviceName)) {
+      return;
+    }
+    const url = this.app.context.nacosServices.get(aggregation.serviceName);
     const result = await this.ctx.curl(`${url}/${getAggregatePath(aggregation.params, aggregation.path)}`, {
       data: getAggregateQueries(aggregation.params),
     });
@@ -55,16 +57,6 @@ export default class AggregationService extends Service {
         attribute.parent[attribute.name] = JSON.parse(result.data);
       }
     }
-  }
-
-  private async getServiceUrl(serviceName: string) {
-    if (!AggregationService.serviceMap.has(serviceName)) {
-      const nacos = this.app.nacosNaming;
-      const services = await nacos.getAllInstances(serviceName);
-      const service = services.sort((a, b) => b.weight - a.weight)[0];
-      AggregationService.serviceMap.set(serviceName, `http://${service.ip}:${service.port}`);
-    }
-    return AggregationService.serviceMap.get(serviceName);
   }
 
   private async getAggregation(serviceName: string, method: string, path: string): Promise<AggregationResult[]> {
