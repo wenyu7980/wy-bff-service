@@ -7,7 +7,7 @@ export default class AggregationService extends Service {
     const { request } = this.ctx;
     const header: HeaderRequest = JSON.parse(request.headers.context).request;
     const url = this.app.context.nacosServices.get(header.serviceName);
-    const result = await this.ctx.curl(`${url}/${getPath(request.path)}`, {
+    const result = await this.ctx.curl(`${url}/${getPath(request.url)}`, {
       headers: request.headers,
       data: request.queries,
       method: 'POST',
@@ -28,7 +28,7 @@ export default class AggregationService extends Service {
     const { request } = this.ctx;
     const header: HeaderRequest = JSON.parse(request.headers.context).request;
     const url = this.app.context.nacosServices.get(header.serviceName);
-    const result = await this.ctx.curl(`${url}/${getPath(request.path)}`, {
+    const result = await this.ctx.curl(`${url}/${getPath(request.url)}`, {
       headers: request.headers,
       data: request.body,
     });
