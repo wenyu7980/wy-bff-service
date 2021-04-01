@@ -7,7 +7,7 @@ export default () => {
   };
   config.cluster = {
     listen: {
-      port: 8100,
+      port: 8001,
     },
   };
   // nacos
@@ -28,7 +28,7 @@ export default () => {
         serviceName: 'wy-aggregation',
         instance: {
           ip: 'localhost',
-          port: 8100,
+          port: 8001,
         },
         groupName: 'DEFAULT_GROUP',
       },
