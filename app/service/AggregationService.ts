@@ -13,7 +13,7 @@ export default class AggregationService extends Service {
       method: 'POST',
     });
     const data = JSON.parse(result.data);
-    await Promise.all(
+    await Promise.allSettled(
       generateAggregations(await this.getAggregation(header.serviceName, header.method, header.path), data)
         .map(a => this.aggregates(a)),
     );
@@ -33,7 +33,7 @@ export default class AggregationService extends Service {
       data: request.body,
     });
     const data = JSON.parse(result.data);
-    await Promise.all(
+    await Promise.allSettled(
       generateAggregations(await this.getAggregation(header.serviceName, header.method, header.path), data)
         .map(a => this.aggregates(a)),
     );
