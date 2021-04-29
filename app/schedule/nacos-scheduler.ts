@@ -1,5 +1,5 @@
 exports.schedule = {
-  interval: '1s', // 1 分钟间隔
+  interval: '5s', // 1 分钟间隔
   type: 'worker',
 };
 exports.task = async function(ctx: any) {

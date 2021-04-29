@@ -169,13 +169,25 @@ function getParam(attributes: string[], aggregation: AggregationResult, data: an
       });
       return ret;
     } else if (data[attr]) {
-      ret.push({
-        params: aggregation.providerParams.map(p => {
-          return { name: p.name, pathFlag: p.pathFlag, value: data[attr][p.name] };
-        }),
-        parent: data,
-        name: attr,
-      });
+      if (data[attr] instanceof Array) {
+        data[attr].forEach((v, i) => {
+          ret.push({
+            params: aggregation.providerParams.map(p => {
+              return { name: p.name, pathFlag: p.pathFlag, value: v[p.name] };
+            }),
+            parent: data[attr],
+            name: i,
+          });
+        });
+      } else {
+        ret.push({
+          params: aggregation.providerParams.map(p => {
+            return { name: p.name, pathFlag: p.pathFlag, value: data[attr][p.name] };
+          }),
+          parent: data,
+          name: attr,
+        });
+      }
     }
     return ret;
   }
