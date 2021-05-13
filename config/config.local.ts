@@ -12,7 +12,7 @@ export default () => {
   };
   // nacos
   config.nacos = {
-    serverList: [ '192.168.3.201:8848' ],
+    serverList: [ 'localhost:8848' ],
     namespace: 'public',
     configCenter: { // 配置中心相关配置
       clientOptions: {},

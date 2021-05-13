@@ -1,42 +1,79 @@
 import { Service } from 'egg';
 import { AggregationInit, AggregationItem } from '../domain/AggregationDefine';
-import { AggregationProviderEntity, AggregationRequirementEntity } from '../entity/AggregationEntity';
+import {
+  ProviderEntity,
+  RequirementAttributeEntity,
+  RequirementEntity,
+  RequirementTypeEntity,
+} from '../entity/AggregationEntity';
 
 export default class AggregationInternalService extends Service {
   public async initAggregation(aggregation: AggregationInit) {
     const { mysql } = this.ctx.app;
     const conn = await mysql.beginTransaction();
     try {
-      await conn.delete('aggregation_requirement', {
-        service_name: aggregation.serviceName,
-      });
-      await conn.delete('aggregation_provider', {
-        service_name: aggregation.serviceName,
-      });
+      await Promise.all([
+        conn.delete('aggregation_requirement', { service_name: aggregation.serviceName }),
+        conn.delete('aggregation_provider', { service_name: aggregation.serviceName }),
+        conn.delete('aggregation_requirement_type', { service_name: aggregation.serviceName }),
+        conn.delete('aggregation_requirement_attribute', { service_name: aggregation.serviceName })
+      ]);
       // requirement
-      for (const requirement of aggregation.requirements) {
-        for (const attribute of requirement.attributes) {
-          await conn.insert<AggregationRequirementEntity>('aggregation_requirement', {
+      const methods: RequirementEntity[] = [];
+      const types: RequirementTypeEntity[] = [];
+      for (const method of aggregation.methods) {
+        methods.push({
+          service_name: aggregation.serviceName,
+          method: method.method,
+          path: method.path,
+          return_type_name: method.returnType,
+        });
+        for (const type of method.types) {
+          types.push({
             service_name: aggregation.serviceName,
-            class_name: attribute.className,
-            method: requirement.method,
-            path: requirement.path,
-            array_flag: attribute.arrayFlag ? 1 : 0,
-            attribute: attribute.attribute,
+            method: method.method,
+            path: method.path,
+            type_name: type,
+          });
+        }
+      }
+      // attributes
+      const attributes: RequirementAttributeEntity[] = [];
+      for (const type of aggregation.types) {
+        for (const attribute of type.attributes) {
+          attributes.push({
+            service_name: aggregation.serviceName,
+            type_name: type.name,
+            type: attribute.type,
+            name: attribute.name,
             params: JSON.stringify(attribute.params),
           });
         }
       }
-      // provider
+      // providers
+      const providers: ProviderEntity[] = [];
       for (const provider of aggregation.providers) {
-        await conn.insert<AggregationProviderEntity>('aggregation_provider', {
+        providers.push({
           service_name: aggregation.serviceName,
           path: provider.path,
-          class_name: provider.className,
-          array_flag: provider.arrayFlag ? 1 : 0,
+          type_name: provider.typeName,
           params: JSON.stringify(provider.params),
         });
       }
+      const promises: any = [];
+      if (types.length) {
+        promises.push(conn.insert<RequirementTypeEntity[]>('aggregation_requirement_type', types));
+      }
+      if (methods.length) {
+        promises.push(conn.insert<RequirementEntity[]>('aggregation_requirement', methods));
+      }
+      if (attributes.length) {
+        promises.push(conn.insert<RequirementAttributeEntity[]>('aggregation_requirement_attribute', attributes));
+      }
+      if (providers.length) {
+        promises.push(conn.insert<ProviderEntity[]>('aggregation_provider', providers));
+      }
+      await Promise.all(promises);
       await conn.commit();
     } catch (e) {
       await conn.rollback();

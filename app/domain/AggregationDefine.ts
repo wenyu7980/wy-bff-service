@@ -1,37 +1,41 @@
 export interface AggregationInit {
   readonly serviceName: string;
-  readonly providers: AggregationProvider[];
-  readonly requirements: AggregationRequirement[];
+  readonly providers: Provider[];
+  readonly methods: RequirementMethod[];
+  readonly types: RequirementType[];
 }
 
-export interface AggregationProvider {
+export interface Provider {
   readonly path: string;
-  readonly className: string;
-  readonly arrayFlag: boolean;
+  readonly typeName: string;
   readonly params: {
     name: string;
     pathFlag: boolean;
   }[]
 }
 
-export interface AggregationRequirement {
+export interface RequirementMethod {
   readonly method: string;
   readonly path: string;
-  readonly attributes: AggregationRequirementAttribute[];
+  readonly returnType: string;
+  readonly types: string[];
 
 }
 
-export interface AggregationRequirementAttribute {
-  readonly attribute: string;
-  readonly className: string;
-  readonly arrayFlag: boolean;
+export interface RequirementType {
+  readonly name: string;
+  readonly attributes: RequirementAttribute[];
+}
+
+export interface RequirementAttribute {
+  readonly name: string;
+  readonly type: string;
   readonly params: {
     readonly name: string;
     readonly value: string;
     readonly constant: boolean
   }[]
 }
-
 
 export interface AggregationItem {
   serviceName: string;
