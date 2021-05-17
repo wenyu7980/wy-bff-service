@@ -81,7 +81,7 @@ export default class AggregationDataService extends Service {
      r.return_type_name 
     from aggregation_requirement r
     where r.service_name = ? and r.method=? and r.path =?;
-    `, [ serviceName, method, path ]))?.[0]['return_type_name'];
+    `, [ serviceName, method, path ]))?.[0]?.['return_type_name'];
   }
 }
 

@@ -5,35 +5,33 @@ import { Type, TypeAggregation } from './AggregationDataService';
 export default class AggregationService extends Service {
 
   async postAggregate(): Promise<{ body: any, status: number, headers: any }> {
-    const { request } = this.ctx;
-    const header: HeaderRequest = JSON.parse(request.headers.context).request;
-    const url = this.app.context.nacosServices.get(header.serviceName);
-    const result = await this.ctx.curl(`${url}/${getPath(request.url)}`, {
-      headers: request.headers,
-      data: request.queries,
-      method: 'POST',
+    return await this.aggregate((request: any) => {
+      const header: HeaderRequest = JSON.parse(request.headers.context).request;
+      const url = this.app.context.nacosServices.get(header.serviceName);
+      return this.ctx.curl(`${url}/${getPath(request.url)}`, {
+        headers: request.headers,
+        data: request.queries,
+        method: 'POST',
+      });
     });
-    const data = JSON.parse(result.data);
-    // await Promise.allSettled(
-    //   generateAggregations(await this.getAggregation(header.serviceName, header.method, header.path), data)
-    //     .map(a => this.aggregates(a)),
-    // );
-    return {
-      body: data,
-      status: result.status,
-      headers: result.headers,
-    };
   }
 
   async getAggregate(): Promise<{ body: any, status: number, headers: any }> {
-    const { request } = this.ctx;
-    const header: HeaderRequest = JSON.parse(request.headers.context).request;
-    const url = this.app.context.nacosServices.get(header.serviceName);
-    const results = await Promise.all([
-      this.ctx.curl(`${url}/${getPath(request.url)}`, {
+    return await this.aggregate(request => {
+      const header: HeaderRequest = JSON.parse(request.headers.context).request;
+      const url = this.app.context.nacosServices.get(header.serviceName);
+      return this.ctx.curl(`${url}/${getPath(request.url)}`, {
         headers: request.headers,
         data: request.body,
-      }),
+      });
+    });
+  }
+
+  private async aggregate(method: (request: any) => Promise<any>): Promise<{ body: any, status: number, headers: any }> {
+    const { request } = this.ctx;
+    const header: HeaderRequest = JSON.parse(request.headers.context).request;
+    const results = await Promise.all([
+      method(request),
       this.service.aggregationDataService.getReturnType(header.serviceName, header.method, header.path),
       this.service.aggregationDataService.getTypes(header.serviceName, header.method, header.path),
     ]);
