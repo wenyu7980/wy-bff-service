@@ -16,7 +16,7 @@ export default class AggregationInternalService extends Service {
         conn.delete('aggregation_requirement', { service_name: aggregation.serviceName }),
         conn.delete('aggregation_provider', { service_name: aggregation.serviceName }),
         conn.delete('aggregation_requirement_type', { service_name: aggregation.serviceName }),
-        conn.delete('aggregation_requirement_attribute', { service_name: aggregation.serviceName })
+        conn.delete('aggregation_requirement_attribute', { service_name: aggregation.serviceName }),
       ]);
       // requirement
       const methods: RequirementEntity[] = [];

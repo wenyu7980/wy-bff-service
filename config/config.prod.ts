@@ -1,14 +1,15 @@
 import { EggAppConfig, PowerPartial } from 'egg';
 
 export default () => {
-  const { NACOS_ADDRESS, NACOS_NAMESPACE, NACOS_GROUP_NAME, ADDRESS, PORT } = global.process.env;
+  const { NACOS_ADDRESS, NACOS_NAMESPACE, NACOS_GROUP_NAME, ADDRESS, SERVER_PORT } = global.process.env;
   const config: PowerPartial<EggAppConfig> = {};
+  const port: number = +(SERVER_PORT ?? 0);
   config.logger = {
     level: 'WARN',
   };
   config.cluster = {
     listen: {
-      port: PORT,
+      port,
     },
   };
   // nacos
@@ -26,10 +27,10 @@ export default () => {
     },
     providers: {
       AggregationService: {
-        serviceName: NACOS_GROUP_NAME,
+        serviceName: 'wy-aggregation',
         instance: {
           ip: ADDRESS,
-          port: PORT,
+          port,
         },
         groupName: NACOS_GROUP_NAME,
       },
